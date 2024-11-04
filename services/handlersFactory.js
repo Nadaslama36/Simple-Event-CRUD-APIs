@@ -14,22 +14,63 @@ exports.deleteOne = (Model) =>
 
     res.status(204).send();
   });
-
-exports.updateOne = (Model) =>
-  asyncHandler(async (req, res, next) => {
-    const document = await Model.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
-
-    if (!document) {
-      return next(
-        new ApiError(`No document for this id ${req.params.id}`, 404)
-      );
+  exports.updateOne = (Model) =>
+    asyncHandler(async (req, res, next) => {
+      const { id } = req.params;
+      const { title, location, date } = req.body;
+  
+       // Validate each field separately if it is included in the request
+    if (title === "") {
+      return next(new ApiError("Title cannot be empty.", 400));
     }
-    // Trigger "save" event when update document
-    document.save();
-    res.status(200).json({ data: document });
-  });
+    if (location === "") {
+      return next(new ApiError("Location cannot be empty.", 400));
+    }
+    if (date === "") {
+      return next(new ApiError("Date cannot be empty.", 400));
+    }
+  
+      // Check if an event with the same title, location, and date already exists (excluding the current event)
+      const existingEvent = await Model.findOne({
+        _id: { $ne: id }, // Exclude the current event by id
+        title,
+        location,
+        date,
+      });
+  
+      if (existingEvent) {
+        return next(new ApiError("An event with the same title, location, and date already exists.", 400));
+      }
+  
+      // Proceed with the update if no duplicate event is found and all fields are valid
+      const updatedDocument = await Model.findByIdAndUpdate(id, req.body, {
+        new: true,
+        runValidators: true,
+      });
+  
+      if (!updatedDocument) {
+        return next(new ApiError(`No document found with id ${id}`, 404));
+      }
+  
+      res.status(200).json({ data: updatedDocument });
+    });
+  
+
+// exports.updateOne = (Model) =>
+//   asyncHandler(async (req, res, next) => {
+//     const document = await Model.findByIdAndUpdate(req.params.id, req.body, {
+//       new: true,
+//     });
+
+//     if (!document) {
+//       return next(
+//         new ApiError(`No document for this id ${req.params.id}`, 404)
+//       );
+//     }
+//     // Trigger "save" event when update document
+//     document.save();
+//     res.status(200).json({ data: document });
+//   });
 
 // exports.createOne = (Model) =>
 //   asyncHandler(async (req, res) => {
